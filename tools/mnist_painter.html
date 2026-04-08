@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>MNIST Premium Painter - LeNet-5 FPGA</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: rgba(30, 41, 59, 0.7);
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --danger: #ef4444;
+            --text: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at top right, #1e293b, var(--bg));
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            margin-top: 40px;
+            padding: 30px;
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 24px; letter-spacing: -0.025em; color: var(--accent); }
+        p { margin: 0 0 25px 0; font-size: 14px; opacity: 0.7; text-align: center; }
+
+        .painter-area {
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 0 4px rgba(16, 185, 129, 0.2);
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            cursor: url('data:image/svg+xml;utf8,<svg fill="%2310b981" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>') 10 10, crosshair;
+        }
+
+        .controls {
+            margin-top: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-clear { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .btn-clear:hover { background: var(--danger); color: white; transform: translateY(-2px); }
+
+        .btn-export { background: var(--accent); color: #064e3b; box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39); }
+        .btn-export:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45); }
+
+        .preview-pane {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        #small-preview {
+            width: 28px;
+            height: 28px;
+            background: #000;
+            border: 1px solid #334155;
+            image-rendering: pixelated;
+        }
+
+        textarea {
+            margin-top: 20px;
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            color: #10b981;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            padding: 10px;
+            resize: none;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MNIST Designer Pro</h1>
+        <p>Vẽ tay mô phỏng tập dữ liệu MNIST cho FPGA</p>
+        
+        <div class="painter-area">
+            <canvas id="canvas" width="300" height="300"></canvas>
+        </div>
+
+        <div class="preview-pane">
+            <span>Dữ liệu thực tế (28x28):</span>
+            <canvas id="small-preview" width="28" height="28"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-clear" onclick="clearCanvas()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Xóa sạch
+            </button>
+            <button class="btn-export" onclick="exportMem()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Tải file .MEM
+            </button>
+        </div>
+
+        <textarea id="output" rows="4" placeholder="Hex Code Q6.10..." readonly></textarea>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const smallCanvas = document.getElementById('small-preview');
+        const smallCtx = smallCanvas.getContext('2d');
+        const output = document.getElementById('output');
+        
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // Cấu hình nét vẽ mượt mà
+        ctx.strokeStyle = "white";
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.lineWidth = 22; // Độ dày tương đương MNIST sau khi downsample
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "white";
+
+        function setup() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            updatePreview();
+        }
+        setup();
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+            updatePreview();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = "black";
+            ctx.shadowBlur = 0;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.shadowBlur = 8;
+            updatePreview();
+            output.value = "";
+        }
+
+        function updatePreview() {
+            smallCtx.fillStyle = "black";
+            smallCtx.fillRect(0, 0, 28, 28);
+            smallCtx.drawImage(canvas, 0, 0, 28, 28);
+        }
+
+        function exportMem() {
+            updatePreview();
+            const imgData = smallCtx.getImageData(0, 0, 28, 28).data;
+            let memContent = "";
+            
+            for (let i = 0; i < imgData.length; i += 4) {
+                const brightness = imgData[i]; 
+                const q610 = Math.floor((brightness / 255.0) * 1024);
+                memContent += q610.toString(16).padStart(4, '0') + "\n";
+            }
+            
+            output.value = memContent.substring(0, 200) + "... (784 lines total)";
+            
+            const blob = new Blob([memContent], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "input_img.mem";
+            a.click();
+        }
+    </script>
+</body>
+</html>

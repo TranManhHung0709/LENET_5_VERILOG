@@ -1,0 +1,32 @@
+# Ignore all files in the root directory
+/*
+
+# But don't ignore directories
+!/*/
+
+# Allow the .gitignore itself
+!.gitignore
+
+# Specifically ignore big files and binaries anywhere
+*.keras
+*.zip
+*.docx
+*.vcd
+*.vvp
+*.exe
+*.o
+*.obj
+
+# Ignore Vivado temporary files/folders
+*.log
+*.jou
+*.str
+*.pb
+*.jou
+*.dir/
+.Xil/
+hd_visual/
+usage_statistics_webtalk.*
+
+# If you want to share the README.md in the root (optional)
+!README.md
